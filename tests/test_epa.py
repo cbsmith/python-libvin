@@ -47,22 +47,25 @@ class TestEPA(object):
         from tempfile import mkdtemp
         from shutil import rmtree
         tempdir = mkdtemp()
+        updated = False
         try:
             import os.path
             if os.path.exists(tempdir):
                 logger.warn('Temporary path %s in place', tempdir)
             else:
                 logger.error('For some reason the temporary path %s cannot be found', tempdir)
-                result = epa.ensure_latest(tempdir)
-                logger.debug('First ensure for %s gets a %s', tempdir, result)
+            result = epa.ensure_latest(tempdir)
+            logger.debug('First ensure for %s gets a %s', tempdir, result)
             logger.warn('Second pass in place')
             if os.path.exists(tempdir):
                 logger.info('Temporary path %s in place', tempdir)
             else:
                 logger.warn('Temporary path %s is not place', tempdir)
-            assert_false(epa.ensure_latest(tempdir), "Somehow a second ensure operation still thought updates were needed")
+            updated = epa.ensure_latest(tempdir)
+            assert_false(updated, "Somehow a second ensure operation still thought updates were needed")
         finally:
-            rmtree(tempdir)
+            if not updated:
+                rmtree(tempdir)
 
 
 @attr('net')
