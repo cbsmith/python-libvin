@@ -3,8 +3,12 @@ import sys, os
 
 VERSION = '0.0.1'
 
-REQUIRES = [
+TEST_REQUIRES = [
     'nose',
+    'python-dateutil'
+]
+
+REQUIRES = [
 ]
 
 setup(name='libvin',
@@ -20,6 +24,6 @@ setup(name='libvin',
     include_package_data=True,
     zip_safe=False,
     test_suite="nose.collector",
-    tests_require=REQUIRES,
+    tests_require=TEST_REQUIRES,
     install_requires=REQUIRES,
 )
