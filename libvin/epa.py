@@ -52,30 +52,49 @@ IF_MODIFIED_SINCE = 'If-Modified-Since'
 LAST_MODIFIED = 'Last-Modified'
 ETAG = 'ETag'
 
+def open_resource_stream(x):
+    path = 'epa/vehicles.{}'.format(x)
+    if os.path.exists(os.path.join('libvin', 'path')):
+        logger.info('Opening %s resource %s', 'libvin', path)
+    else:
+        logger.warn('Opening non-existant %s resource %s', 'libvin', path)
+    return resource_stream('libvin', path)
+
+def make_stream_opener(target_dir):
+    def open_file_stream(x):
+        path = os.path.join(target_dir, 'vehicles.{}'.format(x))
+        if os.path.exists(path):
+            logger.info('Opening file resource %s', path)
+        else:
+            logger.warn('Opening non-existant file resource %s', path)
+        return open(path)
+    return open_file_stream
+
 def ensure_latest(target_dir=None):
     etag = None
     last_modified = None
 
     if target_dir is None:
         target_dir = os.path.join('libvin', 'epa')
-        stream_opener = lambda x: resource_stream('libvin', 'epa/vehicles.{}'.format(x))
+        stream_opener = open_resource_stream
     else:
-        stream_opener = lambda x: open(os.path.join(target_dir, 'vehicles.{}'.format(x)))
+        stream_opener = make_stream_opener(target_dir)
 
     try:
         logger.info('Opening etag')
         with stream_opener('etag') as f:
             etag = f.read(2048) # that's a big buffer for an etag
             logger.info('ETag: %s', etag)
-    except IOError:
-        logger.exception('Problem reading etag')
-    try :
+    except IOError as e:
+        logger.warn('Problem reading etag %s', str(e))
+
+    try:
         logger.info('Opening last_modified')
         with stream_opener('last_modified') as f:
             last_modified = f.read(2048)
-            logger.info('Last-Modified: %s', test_modified)
-    except IOError:
-        logger.exception('Problem reading last_modified')
+            logger.info('Last-Modified: %s', last_modified)
+    except IOError as e:
+        logger.warn('Problem reading last_modified %s', str(e))
 
     response = get_epa_updates(etag=etag, last_modified=last_modified)
     if response.code != 304:
@@ -86,7 +105,7 @@ def ensure_latest(target_dir=None):
         from shutil import rmtree
         from tempfile import mkstemp
         import zipfile
-        target_dir = os.path.join('libvin', 'epa')
+
         # probably should make sure we use the same directory name
         fd, file_path = mkstemp()
         try:
@@ -107,16 +126,15 @@ def ensure_latest(target_dir=None):
 
                 extracted_path = os.path.join(extracted_dir, name)
                 target_path = os.path.join(target_dir, 'vehicles.csv')
-                print('os.rename({}, {})'.format(extracted_path, target_path))
                 os.rename(extracted_path, target_path)
                 etag_path = os.path.join(target_dir, 'vehicles.etag')
                 with open(etag_path, 'w') as f:
                     f.write(new_etag)
-                    logger.info('Successfully wrote out etag %s', new_etag)
+                    logger.info('Successfully wrote out etag %s to %s', new_etag, etag_path)
                 last_modified_path = os.path.join(target_dir, 'vehicles.last_modified')
                 with open(last_modified_path, 'w') as f:
                     f.write(new_last_modified)
-                    logger.info('Successfullly wrote out last_modified %s', new_last_modified)
+                    logger.info('Successfullly wrote out last_modified %s to %s', new_last_modified, last_modified_path)
             finally:
                 try:
                     rmtree(extracted_dir)
